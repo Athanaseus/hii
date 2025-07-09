@@ -1,37 +1,210 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HII Project</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <header>
-        <h1>Welcome to the HII Project</h1>
-    </header>
-    <main>
-        <h2>Catalog</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Column Name 1</th>
-                    <th>Column Name 2</th>
-                    <th>Column Name 3</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><img src="assets/images/placeholder.png" alt="Image for Column Name 1"></td>
-                    <td>Value for Column Name 2</td>
-                    <td>Value for Column Name 3</td>
-                </tr>
-                <!-- Additional rows can be added here -->
-            </tbody>
-        </table>
-    </main>
-    <footer>
-        <p>&copy; 2023 HII Project. All rights reserved.</p>
-    </footer>
-</body>
+
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>HII</title>
+        <link rel="icon" type="image/x-icon" href="/img/logo.ico">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
+        <link rel="stylesheet" href="style.css">
+    </head>
+
+    <body>
+        <section id="header">
+            <a href="new.html"><img src="img/logo.ico" class="logo" alt=""></a>
+
+            <div>
+                <ul id="navbar">
+                    <li><a class="active" href="index.html">MilkyWay</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                    <a href="#" id="close"><i class='bx bx-x'></i></a>
+                </ul>
+            </div>
+            <div id="mobile">
+                <i id="bar" class='bx bx-menu'></i>
+            </div>
+        </section>
+
+        <section id="page-header">
+            <h2></h2>
+            <p></p>
+        </section> 
+        <section id="newsletter" class="section-p1 section-m1">
+            <div class="newstext">
+                <h4>SMGPS source identifier</h4>
+                <p>Name of HII region to retrieve properties</p>
+            </div>
+            <div class="form">
+                <input type="text" id="searchInput" placeholder="Enter Source Name (e.g. G005.191)" />
+                <button class="normal" onclick="searchSources()">Search</button>
+            </div>
+        </section>
+
+        <section id="product1" class="section-p1">
+        <div id="productContainer" class="pro-container"></div>
+        </section>
+
+        <section id="pagination" class="section-p1">
+        <button class="normal" id="prevPage">Previous</button>
+        <span id="pageInfo"></span>
+        <button class="normal" id="nextPage">Next</button>
+        </section>
+
+        <section id="newsletter" class="section-p1 section-m1">
+            <div class="newstext">
+                <h4>Data Access</h4>
+                <p> <span>Full machine readable catalog.</span></p>
+            </div>
+        </section>
+
+        <!-- Modal for source info -->
+        <div id="sourceModal" class="modal">
+        <div id="popupContent" class="modal-content">
+            <span class="close-button" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <table id="modalTable"></table>
+        </div>
+        </div>
+
+        <footer class="section-p1">
+            <div class="col">
+                <div class="follow">
+                    <h4>Follow us</h4>
+                    <div class="icon">
+                        <i class='bx bxl-facebook'></i>
+                        <i class='bx bxl-twitter' ></i>
+                        <i class='bx bxl-instagram' ></i>
+                        <i class='bx bxl-pinterest-alt' ></i>
+                        <i class='bx bxl-youtube' ></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="copyright">
+                <p>© 2025, HII</p>
+            </div>
+        </footer>
+
+        <script src="script.js"></script>
+        <script>
+        const perPage = 12;
+        let currentPage = 1;
+        let sources = [];
+        let filtered = [];
+        let catalog = [];
+
+        async function fetchSources() {
+            const res = await fetch('./img/products/');
+            const text = await res.text();
+            const matches = text.match(/G[0-9+.-_]+\.(png|jpg|jpeg|webp)/gi) || [];
+            sources = matches.map(file => ({
+                file,
+                name: file.split('_')[0]
+            }));
+            filtered = [...sources];
+            await fetchCatalog();
+            renderPage();
+        }
+
+        async function fetchCatalog() {
+            const res = await fetch('./catalog.csv');
+            const text = await res.text();
+            const [headerLine, ...rows] = text.trim().split('\n');
+            const headers = headerLine.split(',');
+            catalog = rows.map(row => {
+                const values = row.split(',');
+                const obj = {};
+                headers.forEach((h, i) => obj[h.trim()] = values[i]?.trim());
+                return obj;
+            });
+        }
+
+        function getSourceData(name) {
+            return catalog.find(row => row["iauName"]?.toUpperCase() === name.toUpperCase());
+        }
+
+        function openModal(name) {
+            const data = getSourceData(name);
+            const modal = document.getElementById("sourceModal");
+            const title = document.getElementById("modalTitle");
+            const table = document.getElementById("modalTable");
+
+            if (!data) {
+                title.textContent = name;
+                table.innerHTML = "<tr><td>No data found in catalog.</td></tr>";
+            } else {
+                title.textContent = data["iauName"];
+                table.innerHTML = Object.entries(data).map(([k, v]) =>
+                    `<tr><td><strong>${k}</strong></td><td>${v}</td></tr>`
+                ).join('');
+            }
+
+            modal.style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("sourceModal").style.display = "none";
+        }
+
+        function renderPage() {
+            const container = document.getElementById("productContainer");
+            container.innerHTML = "";
+            const start = (currentPage - 1) * perPage;
+            const end = start + perPage;
+            const pageItems = filtered.slice(start, end);
+
+            pageItems.forEach(({ file, name }) => {
+                const div = document.createElement("div");
+                div.className = "pro";
+                div.innerHTML = `
+                    <img class="shirt" src="img/products/${file}" alt="${name}" onclick="openModal('${name}')">
+                    <div class="des">
+                    <span>HII region</span>
+                    <h5>${name}</h5>
+                    <p><strong>Dist:</strong> ${getSourceData(name)?.["Dist<br>(kpc)"] || "N/A"} kpc</p>
+                    <p><strong>log(N<sub>Ly</sub>):</strong> ${getSourceData(name)?.["log(N_{Ly})"] || "N/A"}</p>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+
+            document.getElementById("pageInfo").innerText = `Page ${currentPage} of ${Math.ceil(filtered.length / perPage)}`;
+        }
+
+        function searchSources() {
+            const input = document.getElementById("searchInput").value.trim().toUpperCase();
+            filtered = input === "" ? [...sources] : sources.filter(s => s.name.startsWith(input));
+            currentPage = 1;
+            renderPage();
+        }
+
+        document.getElementById("prevPage").onclick = () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPage();
+            }
+        };
+
+        document.getElementById("nextPage").onclick = () => {
+            if (currentPage < Math.ceil(filtered.length / perPage)) {
+                currentPage++;
+                renderPage();
+            }
+        };
+
+        window.onload = fetchSources;
+
+        document.addEventListener('click', function(event) {
+        const popup = document.getElementById('popup');
+        const popupContent = document.getElementById('popupContent');
+        if (popup && popup.style.display === 'block' && !popupContent.contains(event.target)) {
+            popup.style.display = 'none';
+        }
+        });
+
+        </script>
+
+    </body>
 </html>
