@@ -96,9 +96,8 @@
         let catalog = [];
 
         async function fetchSources() {
-            const res = await fetch('img/products');
-            const text = await res.text();
-            const matches = text.match(/G[0-9+.-_]+\.(png|jpg|jpeg|webp)/gi) || [];
+            const res = await fetch('img/products/products.json');
+            const files = await res.json();
             sources = matches.map(file => ({
                 file,
                 name: file.split('_')[0]
