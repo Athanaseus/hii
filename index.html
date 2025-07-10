@@ -96,7 +96,7 @@
         let catalog = [];
 
         async function fetchSources() {
-            const res = await fetch('./img/products/');
+            const res = await fetch('img/products/');
             const text = await res.text();
             const matches = text.match(/G[0-9+.-_]+\.(png|jpg|jpeg|webp)/gi) || [];
             sources = matches.map(file => ({
@@ -109,7 +109,7 @@
         }
 
         async function fetchCatalog() {
-            const res = await fetch('./catalog.csv');
+            const res = await fetch('catalog.csv');
             const text = await res.text();
             const [headerLine, ...rows] = text.trim().split('\n');
             const headers = headerLine.split(',');
