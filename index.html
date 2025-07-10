@@ -96,7 +96,7 @@
         let catalog = [];
 
         async function fetchSources() {
-            const res = await fetch('https://athanaseus.github.io/hii/img/products/');
+            const res = await fetch('img/products');
             const text = await res.text();
             const matches = text.match(/G[0-9+.-_]+\.(png|jpg|jpeg|webp)/gi) || [];
             sources = matches.map(file => ({
