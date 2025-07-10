@@ -98,7 +98,7 @@
         async function fetchSources() {
             const res = await fetch('img/products/products.json');
             const files = await res.json();
-            sources = matches.map(file => ({
+            sources = files.map(file => ({
                 file,
                 name: file.split('_')[0]
             }));
