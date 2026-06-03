@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HII Region Explorer - Catalogue</title>
+    <link rel="icon" type="image/x-icon" href="img/logo.ico">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <section id="header">
+        <a href="https://athanaseus.github.io/hii"><img src="img/logo.ico" class="logo" alt=""></a>
+
+        <div>
+            <ul id="navbar">
+                <li><a href="index.html">MilkyWay</a></li>
+                <li><a class="active" href="catalogue.html">Catalogue</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                <a href="#" id="close"><i class='bx bx-x'></i></a>
+            </ul>
+        </div>
+        <div id="mobile">
+            <i id="bar" class='bx bx-menu'></i>
+        </div>
+    </section>
+
+    <section id="newsletter" class="section-p1 section-m1">
+        <div class="newstext">
+            <h4>Search catalogue entries</h4>
+            <p>Name of HII region to retrieve properties.</p>
+        </div>
+        <div class="form">
+            <input type="text" id="catalogueSearchInput" placeholder="Enter WISE Name start (e.g. G0)">
+            <button class="normal" id="catalogueSearchButton">Search</button>
+        </div>
+    </section>
+
+    <section class="section-p1">
+        <p id="catalogue-meta">Loading catalogue...</p>
+        <div class="catalogue-scroll">
+            <table id="catalogueTable"></table>
+        </div>
+    </section>
+
+        <section id="newsletter" class="section-p1 section-m1">
+            <div class="newstext">
+                <h4>Data Access</h4>
+                <p>
+                    <span>Full machine readable catalog.</span>
+                    <a href="https://athanaseus.github.io/hii/catalog.csv" target="_blank" rel="noopener">Download CSV</a>
+                </p>
+            </div>
+        </section>
+
+
+    <footer class="section-p1">
+        <div class="col">
+            <div class="follow">
+                <h4>Follow us</h4>
+                <div class="icon">
+                    <i class='bx bxl-facebook'></i>
+                    <i class='bx bxl-twitter'></i>
+                    <i class='bx bxl-instagram'></i>
+                    <i class='bx bxl-pinterest-alt'></i>
+                    <i class='bx bxl-youtube'></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="copyright">
+            <p>© 2026, HII</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        let tableHeaders = [];
+        let tableRows = [];
+        let filteredRows = [];
+
+        function parseCsvLine(line) {
+            const values = [];
+            let current = "";
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const next = line[i + 1];
+
+                if (char === '"') {
+                    if (inQuotes && next === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    values.push(current);
+                    current = "";
+                } else {
+                    current += char;
+                }
+            }
+
+            values.push(current);
+            return values;
+        }
+
+        function parseCsv(text) {
+            const lines = text.replace(/\r/g, "").split("\n").filter(line => line.trim() !== "");
+            if (lines.length === 0) {
+                return { headers: [], rows: [] };
+            }
+
+            const headers = parseCsvLine(lines[0]).map(h => h.trim());
+            const rows = lines.slice(1).map(line => {
+                const cols = parseCsvLine(line);
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = (cols[index] || "").trim();
+                });
+                return row;
+            });
+
+            return { headers, rows };
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function renderCatalogueTable() {
+            const table = document.getElementById("catalogueTable");
+            const meta = document.getElementById("catalogue-meta");
+
+            if (tableHeaders.length === 0) {
+                table.innerHTML = "<tbody><tr><td>No catalogue data found.</td></tr></tbody>";
+                meta.textContent = "No data loaded.";
+                return;
+            }
+
+            const headerHtml = tableHeaders.map(h => `<th>${escapeHtml(h)}</th>`).join("");
+            let bodyHtml = filteredRows.map(row => {
+                const cells = tableHeaders.map(h => `<td>${escapeHtml(row[h] || "")}</td>`).join("");
+                return `<tr>${cells}</tr>`;
+            }).join("");
+
+            if (filteredRows.length === 0) {
+                bodyHtml = `<tr><td colspan="${tableHeaders.length}">Source not found</td></tr>`;
+            }
+
+            table.innerHTML = `
+                <thead><tr>${headerHtml}</tr></thead>
+                <tbody>${bodyHtml}</tbody>
+            `;
+
+            if (filteredRows.length === 0) {
+                meta.textContent = "Source not found";
+                return;
+            }
+
+            meta.textContent = `Showing ${filteredRows.length} of ${tableRows.length} entries`;
+        }
+
+        function searchCatalogueEntries() {
+            const query = document.getElementById("catalogueSearchInput").value.trim().toUpperCase();
+
+            if (!query) {
+                filteredRows = [...tableRows];
+                renderCatalogueTable();
+                return;
+            }
+
+            filteredRows = tableRows.filter(row => {
+                const wiseName = (row["WISE Name"] || "").toUpperCase();
+                return wiseName.startsWith(query);
+            });
+
+            renderCatalogueTable();
+        }
+
+        async function loadCatalogue() {
+            try {
+                const res = await fetch("catalog.csv");
+                const text = await res.text();
+                const parsed = parseCsv(text);
+
+                tableHeaders = parsed.headers;
+                tableRows = parsed.rows;
+                filteredRows = [...tableRows];
+
+                renderCatalogueTable();
+            } catch (error) {
+                const table = document.getElementById("catalogueTable");
+                const meta = document.getElementById("catalogue-meta");
+                table.innerHTML = "<tbody><tr><td>Failed to load catalogue.</td></tr></tbody>";
+                meta.textContent = "Error loading data.";
+            }
+        }
+
+        document.getElementById("catalogueSearchButton").addEventListener("click", searchCatalogueEntries);
+        document.getElementById("catalogueSearchInput").addEventListener("input", searchCatalogueEntries);
+        document.getElementById("catalogueSearchInput").addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                searchCatalogueEntries();
+            }
+        });
+
+        window.addEventListener("load", loadCatalogue);
+    </script>
+    
+</body>
+
+</html>

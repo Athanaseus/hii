@@ -26,6 +26,7 @@
             <div>
                 <ul id="navbar">
                     <li><a class="active" href="index.html">MilkyWay</a></li>
+                    <li><a href="catalogue.html">Catalogue</a></li>
                     <li><a href="contact.html">Contact</a></li>
                     <a href="#" id="close"><i class='bx bx-x'></i></a>
                 </ul>
@@ -94,7 +95,7 @@
             </div>
 
             <div class="copyright">
-                <p>© 2025, HII</p>
+                <p>© 2026, HII</p>
             </div>
         </footer>
 
@@ -105,14 +106,30 @@
         let sources = [];
         let filtered = [];
         let catalog = [];
+        const DIST_SUFFIX = '_dist.png';
+        const distAvailabilityCache = new Map();
 
         async function fetchSources() {
             const res = await fetch('img/products/products.json');
             const files = await res.json();
-            sources = files.map(file => ({
-                file,
-                name: file.split('_')[0]
-            }));
+
+            const distNames = new Set(
+                files
+                    .filter(file => file.endsWith(DIST_SUFFIX))
+                    .map(file => file.split('_')[0])
+            );
+
+            sources = files
+                .filter(file => !file.endsWith(DIST_SUFFIX))
+                .map(file => {
+                    const name = file.split('_')[0];
+                    return {
+                        file,
+                        name,
+                        hasDist: distNames.has(name)
+                    };
+                });
+
             filtered = [...sources];
             await fetchCatalog();
             renderPage();
@@ -158,27 +175,158 @@
             document.getElementById("sourceModal").style.display = "none";
         }
 
-        function renderPage() {
+        function canShowDistPlot(name) {
+            if (distAvailabilityCache.has(name)) {
+                return Promise.resolve(distAvailabilityCache.get(name));
+            }
+
+            const distPath = `img/products/${name}${DIST_SUFFIX}`;
+
+            return new Promise(resolve => {
+                const probe = new Image();
+
+                probe.onload = () => {
+                    distAvailabilityCache.set(name, true);
+                    resolve(true);
+                };
+
+                probe.onerror = () => {
+                    distAvailabilityCache.set(name, false);
+                    resolve(false);
+                };
+
+                probe.src = distPath;
+            });
+        }
+
+        function createImageSlider(name, imagePaths) {
+            const slider = document.createElement("div");
+            slider.className = "image-slider";
+
+            const img = document.createElement("img");
+            img.className = "shirt";
+            img.alt = name;
+
+            let currentIndex = 0;
+            let ignoreClick = false;
+            let touchStartX = 0;
+
+            const updateImage = () => {
+                img.src = imagePaths[currentIndex];
+            };
+
+            const goNext = () => {
+                currentIndex = (currentIndex + 1) % imagePaths.length;
+                updateImage();
+            };
+
+            const goPrev = () => {
+                currentIndex = (currentIndex - 1 + imagePaths.length) % imagePaths.length;
+                updateImage();
+            };
+
+            img.addEventListener("click", function(event) {
+                if (ignoreClick) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    ignoreClick = false;
+                    return;
+                }
+                openModal(name);
+            });
+
+            slider.addEventListener("touchstart", function(event) {
+                if (event.touches.length !== 1) return;
+                touchStartX = event.touches[0].clientX;
+            }, { passive: true });
+
+            slider.addEventListener("touchend", function(event) {
+                if (event.changedTouches.length !== 1) return;
+                const touchEndX = event.changedTouches[0].clientX;
+                const deltaX = touchEndX - touchStartX;
+
+                if (Math.abs(deltaX) < 40 || imagePaths.length < 2) {
+                    return;
+                }
+
+                if (deltaX < 0) {
+                    goNext();
+                } else {
+                    goPrev();
+                }
+
+                ignoreClick = true;
+            }, { passive: true });
+
+            updateImage();
+            slider.appendChild(img);
+
+            if (imagePaths.length > 1) {
+                const prevBtn = document.createElement("button");
+                prevBtn.type = "button";
+                prevBtn.className = "slider-arrow slider-arrow-left";
+                prevBtn.setAttribute("aria-label", `Previous plot for ${name}`);
+                prevBtn.innerHTML = "&#10094;";
+                prevBtn.addEventListener("click", function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    goPrev();
+                });
+
+                const nextBtn = document.createElement("button");
+                nextBtn.type = "button";
+                nextBtn.className = "slider-arrow slider-arrow-right";
+                nextBtn.setAttribute("aria-label", `Next plot for ${name}`);
+                nextBtn.innerHTML = "&#10095;";
+                nextBtn.addEventListener("click", function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    goNext();
+                });
+
+                slider.appendChild(prevBtn);
+                slider.appendChild(nextBtn);
+            }
+
+            return slider;
+        }
+
+        async function renderPage() {
             const container = document.getElementById("productContainer");
             container.innerHTML = "";
             const start = (currentPage - 1) * perPage;
             const end = start + perPage;
             const pageItems = filtered.slice(start, end);
 
-            pageItems.forEach(({ file, name }) => {
+            for (const { file, name, hasDist } of pageItems) {
                 const div = document.createElement("div");
                 div.className = "pro";
-                div.innerHTML = `
-                    <img class="shirt" src="img/products/${file}" alt="${name}" onclick="openModal('${name}')">
-                    <div class="des">
+
+                const imagePaths = [`img/products/${file}`];
+                let showDist = Boolean(hasDist);
+
+                if (!showDist) {
+                    showDist = await canShowDistPlot(name);
+                }
+
+                if (showDist) {
+                    imagePaths.push(`img/products/${name}${DIST_SUFFIX}`);
+                }
+
+                div.appendChild(createImageSlider(name, imagePaths));
+
+                const details = document.createElement("div");
+                details.className = "des";
+                details.innerHTML = `
                     <span>HII region</span>
                     <h5>${name}</h5>
                     <p><strong>Dist:</strong> ${getSourceData(name)?.["Dist<br>(kpc)"] || "N/A"} kpc</p>
                     <p><strong>log(N<sub>Ly</sub>):</strong> ${getSourceData(name)?.["log(N_{Ly})"] || "N/A"}</p>
-                    </div>
                 `;
+                div.appendChild(details);
+
                 container.appendChild(div);
-            });
+            }
 
             document.getElementById("pageInfo").innerText = `Page ${currentPage} of ${Math.ceil(filtered.length / perPage)}`;
         }
