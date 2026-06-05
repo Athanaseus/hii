@@ -51,7 +51,7 @@
                 <h4>Data Access</h4>
                 <p>
                     <span>Full machine readable catalog.</span>
-                    <a href="https://athanaseus.github.io/hii/catalog.csv" target="_blank" rel="noopener">Download CSV</a>
+                    <a href="https://athanaseus.github.io/hii/catalogue.csv" target="_blank" rel="noopener">Download CSV</a>
                 </p>
             </div>
         </section>
@@ -190,7 +190,7 @@
 
         async function loadCatalogue() {
             try {
-                const res = await fetch("catalog.csv");
+                const res = await fetch("catalogue.csv");
                 const text = await res.text();
                 const parsed = parseCsv(text);
 
